@@ -32,15 +32,34 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     //: check for files(images)
-    const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // console.log("Req.Files: ", req.files);
+    // const avatarLocalPath = req.files?.avatar[0]?.path;  //! This works, but the error we are getting is different.
+    let avatarLocalPath;
+    if (
+        req.files &&
+        Array.isArray(req.files.avatar) &&
+        req.files.avatar.length > 0
+    ) {
+        avatarLocalPath = req.files.avatar[0].path;
+    }
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is required!");
     }
 
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;  //! This will not work, because coverImage is optional field
+    let coverImageLocalPath;
+    if (
+        req.files &&
+        Array.isArray(req.files.coverImage) &&
+        req.files.coverImage.length > 0
+    ) {
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
+
     //: upload files on cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath);
+    // console.log("Avatar: ", avatar);
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
     if (!avatar) {
         throw new ApiError(
