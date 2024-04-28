@@ -1,7 +1,10 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+    deleteFromCloudinary,
+    uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
@@ -348,6 +351,88 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         );
 });
 
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    //: get avatar file from req.file(multer middleware)
+    const avatarLocalPath = req.file?.path;
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is required!");
+    }
+
+    //: Upload file on cloudinary
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    if (!avatar.url) {
+        throw new ApiError(400, "Error while uploading avatar on cloudinary!");
+    }
+
+    //: update avatar url in DB
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url,
+            },
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    //: remove old avatar image from cloudinary
+    //http://res.cloudinary.com/drqredubp/image/upload/v1713696377/ebgjbyqecwll1bpolifa.png
+    const avatarCloudinaryPath = req.user?.avatar.split("/");
+    const cloudinaryAvatarName =
+        avatarCloudinaryPath[avatarCloudinaryPath.length - 1].split(".")[0];
+    console.log(cloudinaryAvatarName);
+    const response = await deleteFromCloudinary(cloudinaryAvatarName);
+    console.log("Controller: ", response);
+
+    //: return response
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Avatar updated successfully."));
+});
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    //: get avatar file from req.file(multer middleware)
+    const coverImageLocalPath = req.file?.path;
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "Cover image file is required!");
+    }
+
+    //: Upload file on cloudinary
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if (!coverImage.url) {
+        throw new ApiError(
+            400,
+            "Error while uploading cover image on cloudinary!"
+        );
+    }
+
+    //: update coverImage url in DB
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage: coverImage.url,
+            },
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    //: remove old cover image from cloudinary
+    const coverImageCloudinaryPath = req.user?.coverImage.split("/");
+    const cloudinaryCoverImageName =
+        coverImageCloudinaryPath[coverImageCloudinaryPath.length - 1].split(
+            "."
+        )[0];
+    console.log(cloudinaryCoverImageName);
+    const response = await deleteFromCloudinary(cloudinaryCoverImageName);
+    console.log("Controller: ", response);
+
+    //: return response
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Cover image updated successfully."));
+});
+
 export {
     registerUser,
     loginUser,
@@ -356,4 +441,6 @@ export {
     changeCurrentPassword,
     getCurrentUser,
     updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage,
 };
