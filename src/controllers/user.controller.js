@@ -262,4 +262,53 @@ const renewAccessAndRefreshToken = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, logoutUser, renewAccessAndRefreshToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    //: get required details from user
+    const { oldPassword, newPassword, confirmNewPassword } = req.body;
+
+    //: Validation - Not empty
+    if (
+        [oldPassword, newPassword, confirmNewPassword].some(
+            (field) => field?.trim() === ""
+        )
+    ) {
+        throw new ApiError(400, "All fields are required!");
+    }
+
+    //: check newPassword and confirmNewPassword are same or not
+    if (newPassword !== confirmNewPassword) {
+        throw new ApiError(
+            401,
+            "NewPassword and ConfirmNewPassword are not matched!"
+        );
+    }
+
+    //: get userId from req.user (Auth middleware) and find the user form DB
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+        throw new ApiError(401, "Unauthorized access!");
+    }
+
+    //: Now match "oldPassword" with DB_stored password
+    const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+    if (!isPasswordValid) {
+        throw new ApiError(400, "Invalid old password!");
+    }
+
+    //: set newPassword in "user" object and store it in DB
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    //: return response
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password changed successfully."));
+});
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    renewAccessAndRefreshToken,
+    changeCurrentPassword,
+};
