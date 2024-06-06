@@ -499,7 +499,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 },
             },
         ]);
-        console.log("Channel: ", channel);
+        // console.log("Channel: ", channel);
 
         //: If channel is not exists
         if (!channel?.length) {
